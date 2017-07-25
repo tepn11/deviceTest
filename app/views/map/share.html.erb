@@ -1,2 +1,81 @@
-<h1>Map#share</h1>
-<p>Find me in app/views/map/share.html.erb</p>
+<h2>Share a location</h2>
+<div id="map" class="map" style="height: 500px; width: 70%">
+  <div id="popup"></div>
+</div>
+<div style="margin-top: 10px; margin-left: 10px;">
+  <button onClick="share('Friends',mouseCurrentPosition)">Share to friends</button>
+  <button onClick="share('Public',mouseCurrentPosition)">Share to Public</button>
+  <div style="margin-top:10px;">
+    <form method="get" action="/map/view">
+      <button type="submit">Back</button>
+    </form>
+  </div>
+</div>
+<script>
+var mouseCurrentPosition;
+var mousePositionControl = new ol.control.MousePosition({
+  coordinateFormat: ol.coordinate.createStringXY(4),
+  projection: 'EPSG:4326',
+  undefinedHTML: '&nbsp;'
+});
+
+var map = new ol.Map({
+  controls: ol.control.defaults({
+    attributionOptions: ({
+      collapsible: false
+    })
+  }).extend([mousePositionControl]),
+  layers: [
+    new ol.layer.Tile({
+      source: new ol.source.OSM()
+    })
+  ],
+  target: 'map',
+  view: new ol.View({
+    center: [0, 0],
+    zoom: 2
+  })
+});
+
+var element = document.getElementById('popup');
+
+var popup = new ol.Overlay({
+  element: element,
+  positioning: 'bottom-center',
+  stopEvent: false
+});
+map.addOverlay(popup);
+
+map.on('click', function(evt) {
+  var coord = ol.proj.toLonLat(map.getCoordinateFromPixel(evt.pixel));
+  console.log('toLonLat',coord);
+  mouseCurrentPosition = String(coord);
+  $('#mouse-position').val(mouseCurrentPosition);
+  if (true) {
+    popup.setPosition(evt.coordinate);
+    $(element).popover({
+      'placement': 'top',
+      'html': true,
+      'content': 'Selected position'
+    });
+    $(element).popover('show');
+  } else {
+    $(element).popover('destroy');
+  }
+});
+
+function share (type, value) {
+  console.log('Sharing to '+type+' position: ',value);
+  popup.setPosition();
+  var user = <%= current_user.id if current_user %>;
+  var jqxhr = $.post('/map/shareLocation', { coords: value, share: type, user: user });
+  // Handle results
+  jqxhr.success(function (result) {
+      alert("Successfully shared location to "+type);
+      console.log('success');
+  });
+  jqxhr.error(function () {
+      console.log('error');
+  });
+}
+</script>
